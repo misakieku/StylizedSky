@@ -67,5 +67,7 @@ public class StylizedSkyEditor : SkySettingsEditor
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("Misc", EditorStyles.boldLabel);
         PropertyField(m_SkyExposureCurve);
+
+        serializedObject.ApplyModifiedProperties();
     }
 }

@@ -73,7 +73,6 @@ Shader "Hidden/HDRP/Sky/StylizedSky"
             for (uint i = 0; i < _DirectionalLightCount; i++)
             {
                 DirectionalLightData light = _DirectionalLightDatas[i];
-                bool interactsWithSky = asint(light.distanceFromCamera) >= 0;
 
                 if (asint(light.angularDiameter) != 0)
                 {

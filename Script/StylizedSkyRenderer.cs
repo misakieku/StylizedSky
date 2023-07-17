@@ -57,7 +57,7 @@ namespace Misaki.StylizedSky
 
             Vector3 sunDirection;
             float ForwardY;
-            UpdateMainLight(builtinParams, stylizedSky, out sunDirection, out ForwardY);
+            UpdateMainLight(builtinParams, out sunDirection, out ForwardY);
 
             m_PropertyBlock.SetColor(_skyColor, stylizedSky.skyGradient.value.Evaluate(ForwardY));
             m_PropertyBlock.SetColor(_groundColor, stylizedSky.groundGradient.value.Evaluate(ForwardY));
@@ -90,7 +90,7 @@ namespace Misaki.StylizedSky
             CoreUtils.DrawFullScreen(builtinParams.commandBuffer, m_StylizedSkyMaterial, m_PropertyBlock, renderForCubemap ? 0 : 1);
         }
 
-        void UpdateMainLight(BuiltinSkyParameters builtinParams, StylizedSky stylizedSky, out Vector3 sunDirection, out float ForwardY)
+        void UpdateMainLight(BuiltinSkyParameters builtinParams, out Vector3 sunDirection, out float ForwardY)
         {
             // Default values when no sun is provided
             sunDirection = Vector3.zero;
@@ -113,9 +113,7 @@ namespace Misaki.StylizedSky
             var lightList = Object.FindObjectsByType<HDStylizedDirectionalLight>(FindObjectsSortMode.None);
 
             if (lightList.Count() <= 0)
-            {
                 return;
-            }
 
             mainLight = lightList.First().lightComponent.GetComponent<Light>();
             float top = -100;

@@ -148,30 +148,33 @@ Shader "Hidden/HDRP/Sky/StylizedSky"
     float4 RenderSky(Varyings input)
     {
         float3 V = GetSkyViewDirWS(input.positionCS.xy);
-        float maskSunHalo, maskHorizon, maskGradient, maskSkyGradient;
-        float3 SunDisc;
+        float maskSunHalo, maskHorizon, maskGradient, maskSkyGradient = 0;
+        float3 SunDisc = 0;
+        float3 skyColor, spaceColor, finalColor = 0;
         ComputeSkyMasks(input, V, SunDisc, maskSunHalo, maskHorizon, maskGradient, maskSkyGradient);
 
-        float3 finalColor = lerp(_groundColor, _skyColor * maskSkyGradient, maskGradient);
+        skyColor = lerp(_groundColor, _skyColor * maskSkyGradient, maskGradient);
 
         // Add horizon line.
-        finalColor = finalColor + _horizonLineColor * _horizonLineContribution * maskHorizon * maskSkyGradient;
+        skyColor += _horizonLineColor * _horizonLineContribution * maskHorizon * maskSkyGradient;
 
         // Add sun halo.
-        finalColor += _sunColor * _sunHaloContribution * maskSunHalo;
+        skyColor += _sunColor * _sunHaloContribution * maskSunHalo;
 
         // Add sun disc
-        finalColor += SunDisc;
-        finalColor = finalColor * EV2Lux(_skyIntensity);
+        skyColor += SunDisc;
+
+        skyColor = skyColor * EV2Lux(_skyIntensity);
 
         // Space
         if(_renderSpace == 1)
         {
-            float3 spaceColor = SAMPLE_TEXTURECUBE(_spaceTexture, s_trilinear_clamp_sampler, mul(-V, (float3x3)_spaceRotation)).rgb * maskGradient;
+            spaceColor = SAMPLE_TEXTURECUBE(_spaceTexture, s_trilinear_clamp_sampler, mul(-V, (float3x3)_spaceRotation)).rgb * maskGradient;
             spaceColor = spaceColor * EV2Lux(_spaceEV);
             finalColor += spaceColor;
         }
 
+        finalColor += skyColor;
         return float4(finalColor, 1);
     }
 

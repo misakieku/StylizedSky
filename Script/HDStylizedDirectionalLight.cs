@@ -44,7 +44,7 @@ namespace Misaki.StylizedSky
             StylizedSkyRenderer.instance.UpdateSky();
         }
 
-        private void Update()
+        private void LateUpdate()
         {
             if (lightComponent == null)
                 return;

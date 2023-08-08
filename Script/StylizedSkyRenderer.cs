@@ -96,31 +96,43 @@ namespace Misaki.StylizedSky
             sunDirection = Vector3.zero;
             ForwardY = 0.5f;
 
+            // If no main light is provided, use the builtin sun light
             if (mainLight == null)
             {
                 mainLight = builtinParams.sunLight;
             }
 
             if (mainLight != null)
+            // If a main light is provided, use it
+            if (mainLight!= null)
             {
+                // Set the sun direction to the main light's forward vector
                 sunDirection = -mainLight.transform.forward;
+                // Set the ForwardY value to the maximum of the sun direction's y value and 0.5f
                 ForwardY = Mathf.Max(sunDirection.y * 0.5f + 0.5f, 0f);
             }
         }
 
         void GetDirectionalLight()
         {
+            //Find all objects of type HDStylizedDirectionalLight
             var lightList = Object.FindObjectsByType<HDStylizedDirectionalLight>(FindObjectsSortMode.None);
 
+            //If there are no lights, return
             if (lightList.Count() <= 0)
                 return;
 
+            //Set the main light to the first light
             mainLight = lightList.First().lightComponent.GetComponent<Light>();
+            //Set the top value to -100
             float top = -100;
+            //If there are more than one lights, loop through them
             if (lightList.Count() > 1)
             {
+                //Loop through all lights
                 foreach (var item in lightList)
                 {
+                    //If the priority of the current light is greater than the top value, set the main light to the current light
                     if (item.priority > top)
                     {
                         mainLight = item.lightComponent.GetComponent<Light>();

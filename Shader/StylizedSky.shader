@@ -14,8 +14,10 @@ Shader "Hidden/HDRP/Sky/StylizedSky"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Sky/SkyUtils.hlsl"
     #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Lighting/LightLoop/CookieSampling.hlsl"
+    #include "Packages/com.unity.render-pipelines.high-definition/Runtime/Sky/PhysicallyBasedSky/PhysicallyBasedSkyRendering.hlsl"
+    #include "StylizedSkyRender.hlsl"
 
-    int _renderSunDisk;
+    int _rendersunDisc;
 
     float3 _skyColor;
     float3 _groundColor;
@@ -56,85 +58,26 @@ Shader "Hidden/HDRP/Sky/StylizedSky"
         return output;
     }
 
-    float EV2Lux(float In)
-    {
-        float lux = 2.5f * pow(2.0f, In);
-        return lux;
-    }
-
-    // Calculates the sun shape
-    float3 SunDisc(float3 V)
-    {
-        bool renderSunDisk = _renderSunDisk != 0;
-        float3 sunDisk = float3(0, 0, 0);
-
-        if (renderSunDisk)
-        {
-            for (uint i = 0; i < _DirectionalLightCount; i++)
-            {
-                DirectionalLightData light = _DirectionalLightDatas[i];
-
-                if (asint(light.angularDiameter) != 0)
-                {
-                    // We may be able to see the celestial body.
-                    float3 L = -light.forward.xyz;
-                    float LdotV    = dot(L, V);
-                    float rad      = acos(LdotV);
-                    float radInner = 0.5 * light.skyAngularDiameter;
-
-                    if (LdotV >= light.flareCosOuter)
-                    {
-                        float solidAngle = TWO_PI * (1 - light.flareCosInner);
-                        float3 color = light.color.rgb * rcp(solidAngle);
-
-                        if (LdotV >= light.flareCosInner) // Sun disk.
-                        {
-                            float2 uv = 0;
-                            if (light.bodyType == 2 || light.surfaceTextureScaleOffset.x > 0)
-                            {
-                                // The cookie code de-normalizes the axes.
-                                float2 proj   = float2(dot(V, normalize(light.right)), dot(V, normalize(light.up)));
-                                float2 angles = float2(FastASin(-proj.x), FastASin(proj.y));
-                                uv = angles * rcp(radInner);
-                            }
-
-                            if (light.surfaceTextureScaleOffset.x > 0)
-                            {
-                                color *= SampleCookie2D(uv * 0.5 + 0.5, light.surfaceTextureScaleOffset);
-                            }
-
-                            color *= light.surfaceTint;
-                            sunDisk = color;
-                        }
-                        else // Flare region.
-                        {
-                            float r = max(0, rad - radInner);
-                            float w = saturate(1 - r * rcp(light.flareSize));
-
-                            color *= light.flareTint;
-                            color *= SafePositivePow(w, light.flareFalloff);
-                            sunDisk += color;
-                        }
-                        sunDisk = sunDisk/(EV2Lux(_skyIntensity) * TWO_PI);
-                    }
-                }
-            }
-        }
-        return sunDisk;
-    }
-
-    void ComputeSkyMasks(Varyings input, float3 V, out float3 sunDisc, out float sunHalo, out float horizon, out float gradient, out float skyGradient)
+    void ComputeSkyMasks(Varyings input, float3 V, out float4 sunDisc, out float sunHalo, out float horizon, out float gradient, out float skyGradient)
     {
         // Reverse it to point into the scene
         float3 dir = -V;
-        float dotViewSun = saturate(dot(dir, _sunDirection));
+        float VdotL = saturate(dot(dir, _sunDirection));
         float y = dir.y;
 
-        float bellCurve = pow(saturate(dotViewSun), _sunHaloExponent * saturate(abs(y)));
+        float bellCurve = pow(saturate(VdotL), _sunHaloExponent * saturate(abs(y)));
         float horizonSoften = 1 - pow(1 - saturate(y), 50);
-        sunHalo = saturate(bellCurve * horizonSoften);
+        if(_rendersunDisc != 0)
+        {
+            sunHalo = saturate(bellCurve * horizonSoften);
+        }
+        else
+        {
+			sunHalo = 0;
+		}
 
-        sunDisc = SunDisc(dir) * horizonSoften;
+        float tFrag    = FLT_INF;
+        sunDisc = SunDisc(V, _rendersunDisc, _skyIntensity) * horizonSoften;
 
         horizon = saturate(1.0 - abs(y));
         horizon = saturate(pow(horizon, _horizonLineExponent));
@@ -142,18 +85,29 @@ Shader "Hidden/HDRP/Sky/StylizedSky"
         gradient = saturate(y);
         gradient = saturate(pow(gradient, 0.5));
 
-        skyGradient = dot(dir, _sunDirection) * 0.25 + 0.75;
+        skyGradient = y * 0.25 + 0.75;
     }
 
     float4 RenderSky(Varyings input)
     {
         float3 V = GetSkyViewDirWS(input.positionCS.xy);
         float maskSunHalo, maskHorizon, maskGradient, maskSkyGradient = 0;
-        float3 SunDisc = 0;
+        float4 sunDisc = 0;
         float3 skyColor, spaceColor, finalColor = 0;
-        ComputeSkyMasks(input, V, SunDisc, maskSunHalo, maskHorizon, maskGradient, maskSkyGradient);
+        ComputeSkyMasks(input, V, sunDisc, maskSunHalo, maskHorizon, maskGradient, maskSkyGradient);
 
         skyColor = lerp(_groundColor, _skyColor * maskSkyGradient, maskGradient);
+
+        // Space
+        if(_renderSpace == 1)
+        {
+            spaceColor = SAMPLE_TEXTURECUBE(_spaceTexture, s_trilinear_clamp_sampler, mul(-V, (float3x3)_spaceRotation)).rgb * maskGradient;
+            spaceColor = spaceColor * EV2Lux(_spaceEV);
+            finalColor += spaceColor * (1 - sunDisc.a);
+        }
+
+        // Add sun disc
+        skyColor += sunDisc.rgb;
 
         // Add horizon line.
         skyColor += _horizonLineColor * _horizonLineContribution * maskHorizon * maskSkyGradient;
@@ -161,18 +115,7 @@ Shader "Hidden/HDRP/Sky/StylizedSky"
         // Add sun halo.
         skyColor += _sunColor * _sunHaloContribution * maskSunHalo;
 
-        // Add sun disc
-        skyColor += SunDisc;
-
         skyColor = skyColor * EV2Lux(_skyIntensity);
-
-        // Space
-        if(_renderSpace == 1)
-        {
-            spaceColor = SAMPLE_TEXTURECUBE(_spaceTexture, s_trilinear_clamp_sampler, mul(-V, (float3x3)_spaceRotation)).rgb * maskGradient;
-            spaceColor = spaceColor * EV2Lux(_spaceEV);
-            finalColor += spaceColor;
-        }
 
         finalColor += skyColor;
         return float4(finalColor, 1);

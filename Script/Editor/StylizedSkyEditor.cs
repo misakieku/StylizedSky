@@ -1,11 +1,13 @@
-using UnityEditor;
 using Misaki.StylizedSky;
+using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEditor.Rendering.HighDefinition;
 
 [CustomEditor(typeof(StylizedSky))]
 public class StylizedSkyEditor : SkySettingsEditor
 {
+    StylizedSky stylizedSky;
+
     SerializedDataParameter m_SkyGradient;
     SerializedDataParameter m_GroundGradient;
     SerializedDataParameter m_HorizonLineGradient;
@@ -20,10 +22,15 @@ public class StylizedSkyEditor : SkySettingsEditor
     SerializedDataParameter m_HorizonLineExponent;
     SerializedDataParameter m_SunHaloExponent;
 
+    SerializedDataParameter m_ExposureType;
     SerializedDataParameter m_SkyExposureCurve;
+    SerializedDataParameter m_SkyExposure;
+    SerializedDataParameter m_SkyEVAdjustment;
     public override void OnEnable()
     {
-        var o = new PropertyFetcher<StylizedSky>(serializedObject);
+        stylizedSky = target as StylizedSky;
+
+        PropertyFetcher<StylizedSky> o = new PropertyFetcher<StylizedSky>(serializedObject);
 
         m_SkyGradient = Unpack(o.Find(x => x.skyGradient));
         m_GroundGradient = Unpack(o.Find(x => x.groundGradient));
@@ -39,34 +46,47 @@ public class StylizedSkyEditor : SkySettingsEditor
         m_SunHaloContribution = Unpack(o.Find(x => x.sunHaloContribution));
         m_SunHaloExponent = Unpack(o.Find(x => x.sunHaloExponent));
 
+        m_ExposureType = Unpack(o.Find(x => x.exposureMode));
         m_SkyExposureCurve = Unpack(o.Find(x => x.skyEVCurve));
+        m_SkyExposure = Unpack(o.Find(x => x.skyFixedExposure));
+        m_SkyEVAdjustment = Unpack(o.Find(x => x.skyEVAdjustment));
     }
 
     public override void OnInspectorGUI()
     {
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Sky Color", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Sky Color", EditorStyles.miniLabel);
         PropertyField(m_SkyGradient);
         PropertyField(m_GroundGradient);
         PropertyField(m_HorizonLineGradient);
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Space", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Space", EditorStyles.miniLabel);
         PropertyField(m_RenderSpace);
         PropertyField(m_SkyTexture);
         PropertyField(m_SpaceRotation);
         PropertyField(m_SpaceEV);
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Sky Control", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("Sky Control", EditorStyles.miniLabel);
         PropertyField(m_HorizonLineContribution);
         PropertyField(m_HorizonLineExponent);
         PropertyField(m_SunHaloContribution);
         PropertyField(m_SunHaloExponent);
 
-        EditorGUILayout.Space();
-        EditorGUILayout.LabelField("Misc", EditorStyles.boldLabel);
-        PropertyField(m_SkyExposureCurve);
+        EditorGUILayout.LabelField("Exposure", EditorStyles.miniLabel);
+        PropertyField(m_ExposureType);
+        switch (stylizedSky.exposureMode.value)
+        {
+            case StylizedSky.ExposureType.Curve:
+                PropertyField(m_SkyExposureCurve);
+                break;
+
+            case StylizedSky.ExposureType.Fixed:
+                PropertyField(m_SkyExposure);
+                break;
+
+            case StylizedSky.ExposureType.Automatic:
+                PropertyField(m_SkyEVAdjustment);
+                break;
+        }
 
         serializedObject.ApplyModifiedProperties();
     }

@@ -9,6 +9,13 @@ namespace Misaki.StylizedSky
     [SkyUniqueID(STYLIZED_SKY_UNIQUE_ID)]
     public class StylizedSky : SkySettings
     {
+        public enum ExposureType
+        {
+            Curve,
+            Fixed,
+            Automatic
+        }
+
         const int STYLIZED_SKY_UNIQUE_ID = 39934110;
 
         [Tooltip("Specifies the gradient color of the sky.")]
@@ -29,7 +36,6 @@ namespace Misaki.StylizedSky
 
         [Tooltip("Specifies the horizon line contribution.")]
         public ClampedFloatParameter horizonLineContribution = new ClampedFloatParameter(1, 0, 2);
-
         [Tooltip("Specifies the horizon line exponent.")]
         public FloatParameter horizonLineExponent = new FloatParameter(5);
         [Tooltip("Specifies the sun halo contribution.")]
@@ -37,8 +43,14 @@ namespace Misaki.StylizedSky
         [Tooltip("Specifies the sun halo exponent.")]
         public FloatParameter sunHaloExponent = new FloatParameter(125);
 
+        [Tooltip("Specifies the exposure type. Curve mode will sample the curve's value base on main light position; Fixed mode will fix the exposure value; Automatic mode will set the sky exposure base on all Stylized Directional Lights' intensity")]
+        public EnumParameter<ExposureType> exposureMode = new EnumParameter<ExposureType>(ExposureType.Curve);
         [Tooltip("Specifies the sky exposure curve.")]
         public AnimationCurveParameter skyEVCurve = new AnimationCurveParameter(new AnimationCurve());
+        [Tooltip("Specifies the sky exposure.")]
+        public FloatParameter skyFixedExposure = new FloatParameter(1);
+        [Tooltip("Specifies the sky EV adjustment.")]
+        public ClampedFloatParameter skyEVAdjustment = new ClampedFloatParameter(0, -5, 5);
 
         public override Type GetSkyRendererType()
         {
@@ -52,11 +64,12 @@ namespace Misaki.StylizedSky
             {
                 hash = hash * 23 + skyGradient.GetHashCode() + groundGradient.GetHashCode() +
                                     groundGradient.GetHashCode() + horizonLineGradient.GetHashCode() +
-                                    horizonLineContribution.GetHashCode() + sunHaloContribution.GetHashCode() + 
-                                    horizonLineExponent.GetHashCode() + sunHaloExponent.GetHashCode() + 
-                                    skyEVCurve.GetHashCode() + renderSpace.GetHashCode() + 
-                                    spaceTexture.GetHashCode() +  spaceRotation.GetHashCode() + 
-                                    spaceEV.GetHashCode();
+                                    horizonLineContribution.GetHashCode() + sunHaloContribution.GetHashCode() +
+                                    horizonLineExponent.GetHashCode() + sunHaloExponent.GetHashCode() +
+                                    skyEVCurve.GetHashCode() + renderSpace.GetHashCode() +
+                                    spaceTexture.GetHashCode() + spaceRotation.GetHashCode() +
+                                    spaceEV.GetHashCode() + exposureMode.GetHashCode() +
+                                    skyFixedExposure.GetHashCode() + skyEVAdjustment.GetHashCode();
             }
             return hash;
         }

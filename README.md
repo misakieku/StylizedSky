@@ -7,6 +7,6 @@ Download the .unitypackage file or whole repository and import it into your proj
 ## Render-Pipline Capability
 | Render-Pipline   | Capability |
 | :----- | :--------------------|
-| BIRP  | ❎  |
-| URP   | ❎  |
+| BIRP  | ❌  |
+| URP   | ❌  |
 | HDRP  | ✅  |
